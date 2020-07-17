@@ -7,33 +7,40 @@ allow multiple people on the same network to add to the same Spotify
 queue without requiring a dedicated laptop in the corner of the room
 for people to walk _all_ the way over to.
 
-At its heart, CAST hosts a very simple webserver containing a tiny form.
-The input to this form will be searched in Spotify, and the first track
-found is added to the queue.
+At its heart, CAST hosts a very simple webserver on a port specified by
+the environment variable CAST_PORT. By default, this is 8080. The
+website served by the server contains a tiny form. The input to this
+form will be searched in Spotify, and the first track found is added to
+the queue.
 
 Spotify Premium is required to interface with this app. To handle
 authentication, the Spotify API uses OAuth2. To interface with this, you
-will need a client id and secret.
+will need to set the environment variables CAST_CLIENT_ID and
+CAST_CLIENT_SECRET. To obtain these, set up a dummy application at
+https://developer.spotify.com/dashboard/applications - this will give
+you your ID and secret.
 
-All of the heavy lifting and communications with the Spotify API are
-done using the excellent spotipy library. You will need to set the
-environment variables SPOTIPY_CLIENT_ID and SPOTIPY_CLIENT_SECRET to
-your client id and secret (available from the Spotify developer page).
-You will also need to set SPOTIPY_REDIRECT_URL to
-http://localhost:8080/callback.
-TODO We can handle this better surely? Maybe have CAST_CLIENT_ID etc?
+In your dummy application settings, you will also need to set a redirect
+URI. This should be set to http://localhost:8080/callback (8080 should
+be replaced with the value of the environment variable CAST_PORT if you
+set it).
 
 Adding to the queue will require an active Spotify device. To do this,
 you may need to start playing directly from your laptop/whatever before
-interfacing with this.
+using CAST to interact.
+
+All of the heavy lifting and communications with the Spotify API are
+done using the excellent spotipy library.
 """
 
+import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 import spotipy
 
 SCOPE = "user-read-playback-state,user-modify-playback-state"
-
+CAST_PORT = int(os.getenv("CAST_PORT")) or 8080
+REDIRECT_URI = f"http://localhost:{CAST_PORT}/callback"
 SEARCH_FORM = """
 <form id="form1">
     <label for="search">Search:</label><br>
@@ -101,7 +108,13 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         full_path = self.path
         query_string = parse_qs(parts.query)
         cache_path = ".cast_cache"
-        auth_manager = spotipy.oauth2.SpotifyOAuth(scope=SCOPE, cache_path=cache_path)
+        client_id = os.getenv("CAST_CLIENT_ID")
+        client_secret = os.getenv("CAST_CLIENT_SECRET")
+        auth_manager = spotipy.oauth2.SpotifyOAuth(scope=SCOPE,
+                                                   cache_path=cache_path,
+                                                   client_id=client_id,
+                                                   client_secret=client_secret,
+                                                   redirect_uri=REDIRECT_URI)
         if path == "/favicon.ico":
             pass
         elif path == "/callback":
@@ -148,7 +161,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                 self._write_page(premsg=output.encode())
 
 if __name__ == "__main__":
-    server_address = ("", 8080)
+    server_address = ("", CAST_PORT)
     httpd = HTTPServer(server_address, HTTPRequestHandler)
-    print("Starting CAST server on localhost, port 8080")
+    print(f"Starting CAST server on localhost, port {CAST_PORT}")
     httpd.serve_forever()
