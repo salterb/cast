@@ -129,13 +129,14 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             # Though not documented, this _should_ refresh the token if it's expired
             tokens = auth_manager.get_cached_token()
             if not tokens:
+                # If we have no token, we redirect to the Spotify authorisation
+                # URL. This URL in turn redirects to the callback URL with a
+                # magic code in the query string. We use this code to get an
+                # access token, and then can redirect to the root page
                 auth_url = auth_manager.get_authorize_url()
-                self.send_response(200)
-                self.send_header("Content-type", "text/html")
+                self.send_response(301)
+                self.send_header("Location", f"{auth_url}")
                 self.end_headers()
-                self.wfile.write(f'<h2><a href="{auth_url}">'
-                                 f'Click to cache auth tokens</a></h2>'.encode())
-                return
 
             # If here, then we have valid auth tokens
             if full_path == "/":
