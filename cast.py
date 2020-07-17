@@ -43,51 +43,42 @@ SEARCH_FORM = """
 <button type="submit" form="form1" value="Submit">Submit</button>
 """
 
-def search_and_queue(track_name, access_token):
+def search_and_queue(track_name, spotify_ctx):
     """Search Spotify with the desired track name, and add the first
     thing found to the list.
     """
-    sp = spotipy.Spotify(auth=access_token)
-    search = sp.search(track_name, type="track", limit=1)
+    search = spotify_ctx.search(track_name, type="track", limit=1)
     track = search["tracks"]["items"][0]
-    sp.add_to_queue(track["uri"])
+    spotify_ctx.add_to_queue(track["uri"])
     return_string = (f"Queued:<br>"
                      f"Song: {track['name']}<br>"
                      f"Artist: {track['artists'][0]['name']}<br>"
                      f"Album: {track['album']['name']}<br>")
     return return_string
 
-def admin_control(arg, access_token):
+def admin_control(arg, spotify_ctx):
     """Perform one of a limited set of actions (other than queuing).
     Options are: pause
                  current
                  skip
                  resume
-                 shuffle
     """
-    sp = spotipy.Spotify(auth=access_token)
     arg = arg.lower()
     if arg == "pause":
-        sp.pause_playback()
+        spotify_ctx.pause_playback()
         response = "Playback paused"
     elif arg == "current":
-        track = sp.currently_playing()["item"]
+        track = spotify_ctx.currently_playing()["item"]
         response = (f"Currently playing:<br>"
                     f"Song: {track['name']}<br>"
                     f"Artist: {track['artists'][0]['name']}<br>"
                     f"Album: {track['album']['name']}<br>")
     elif arg in ("skip", "next"):
-        sp.next_track()
+        spotify_ctx.next_track()
         response = "Skipped to next track"
     elif arg in ("resume", "play"):
-        sp.start_playback()
+        spotify_ctx.start_playback()
         response = "Playback resumed"
-    elif arg in ("shuffle", "shuffleon"):
-        sp.shuffle(True)
-        response = "Shuffle on"
-    elif arg in ("noshuffle, shuffleoff"):
-        sp.shuffle(False)
-        response = "Shuffle off"
     return response
 
 
@@ -108,7 +99,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         parts = urlparse(self.path)
         path = parts.path
         full_path = self.path
-        qs = parse_qs(parts.query)
+        query_string = parse_qs(parts.query)
         cache_path = ".cast_cache"
         auth_manager = spotipy.oauth2.SpotifyOAuth(scope=SCOPE, cache_path=cache_path)
         if path == "/favicon.ico":
@@ -116,7 +107,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         elif path == "/callback":
             # This will cache the token by saving it to a file, so we
             # don't need to store it in a variable.
-            auth_manager.get_access_token(qs["code"], check_cache=False)
+            auth_manager.get_access_token(query_string["code"], check_cache=False)
             self.send_response(301)
             self.send_header("Location", "/")
             self.end_headers()
@@ -141,14 +132,16 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                 self._write_page(premsg="Hello!".encode())
             else:
                 try:
-                    search = qs["search"][0]
+                    search = query_string["search"][0]
                 except KeyError:
                     self.send_response(404)
                     return
+
+                spotify_ctx = spotipy.Spotify(auth=tokens["access_token"])
                 if search.startswith("ADMIN"):
-                    output = admin_control(search[5:], tokens["access_token"])
+                    output = admin_control(search[5:], spotify_ctx)
                 else:
-                    output = search_and_queue(search, tokens["access_token"])
+                    output = search_and_queue(search, spotify_ctx)
                 self.send_response(200)
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
