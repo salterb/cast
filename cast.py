@@ -71,8 +71,11 @@ def admin_control(arg, access_token):
         sp.pause_playback()
         response = "Playback paused"
     elif arg == "current":
-        track_info = sp.currently_playing()
-        print(track_info)
+        track = sp.currently_playing()["item"]
+        response = (f"Currently playing:<br>"
+                    f"Song: {track['name']}<br>"
+                    f"Artist: {track['artists'][0]['name']}<br>"
+                    f"Album: {track['album']['name']}<br>")
     elif arg in ("skip", "next"):
         sp.next_track()
         response = "Skipped to next track"
@@ -106,7 +109,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         path = parts.path
         full_path = self.path
         qs = parse_qs(parts.query)
-        cache_path = "cache"
+        cache_path = ".cast_cache"
         auth_manager = spotipy.oauth2.SpotifyOAuth(scope=SCOPE, cache_path=cache_path)
         if path == "/favicon.ico":
             pass
@@ -154,4 +157,5 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     server_address = ("", 8080)
     httpd = HTTPServer(server_address, HTTPRequestHandler)
+    print("Starting CAST server on localhost, port 8080")
     httpd.serve_forever()
