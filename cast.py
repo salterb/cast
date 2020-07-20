@@ -8,7 +8,7 @@ queue without requiring a dedicated laptop in the corner of the room
 for people to walk _all_ the way over to.
 
 At its heart, CAST hosts a very simple webserver on a port specified by
-the environment variable CAST_PORT. By default, this is 8080. The
+the environment variable CAST_PORT. By default, this is 3141. The
 website served by the server contains a tiny form. The input to this
 form will be searched in Spotify, and the first track found is added to
 the queue.
@@ -21,9 +21,10 @@ https://developer.spotify.com/dashboard/applications - this will give
 you your ID and secret.
 
 In your dummy application settings, you will also need to set a redirect
-URI. This should be set to http://localhost:8080/callback (8080 should
-be replaced with the value of the environment variable CAST_PORT if you
-set it).
+URI. This should be set to http://localhost:9999. If you wish to use a
+different port, you can set the environment variable CAST_REDIRECT_PORT
+to another valid port, and change the redirect URI accordingly in the
+developer dashboard.
 
 Adding to the queue will require an active Spotify device. To do this,
 you may need to start playing directly from your laptop/whatever before
@@ -39,8 +40,9 @@ from urllib.parse import urlparse, parse_qs
 import spotipy
 
 SCOPE = "user-read-playback-state,user-modify-playback-state"
-CAST_PORT = os.getenv("CAST_PORT") or 8080
-REDIRECT_URI = f"http://localhost:{CAST_PORT}/callback"
+CAST_PORT = os.getenv("CAST_PORT") or 3141
+CAST_REDIRECT_PORT = os.getenv("CAST_REDIRECT_PORT") or 9999
+REDIRECT_URI = f"http://localhost:{CAST_REDIRECT_PORT}"
 
 SEARCH_FORM = """
 <form id="form1">
@@ -105,41 +107,32 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(SEARCH_FORM.encode())
 
     def do_GET(self):
-        """Respond to HTTP GET request"""
+        """Respond to HTTP GET request.
+
+        If no cached access token is found, this spins up another little
+        webserver on localhost:CAST_REDIRECT_PORT (default 9999) and
+        opens a web browser to handle the redirect. This is perhaps a
+        little more heavyweight than is necessary (since we could just
+        redirect to this webserver and handle it ourselves), but the
+        get_access_token() method does so much for us that it seems
+        wasteful to reimplement its functionality. This will only happen
+        the first time the app is used, since after that we'll have
+        cached tokens."""
+        full_path = self.path
         parts = urlparse(self.path)
         path = parts.path
-        full_path = self.path
-        query_string = parse_qs(parts.query)
-        cache_path = ".cast_cache"
-        client_id = os.getenv("CAST_CLIENT_ID")
-        client_secret = os.getenv("CAST_CLIENT_SECRET")
-        auth_manager = spotipy.oauth2.SpotifyOAuth(scope=SCOPE,
-                                                   cache_path=cache_path,
-                                                   client_id=client_id,
-                                                   client_secret=client_secret,
-                                                   redirect_uri=REDIRECT_URI)
-        if path == "/favicon.ico":
-            pass
-        elif path == "/callback":
-            # This will cache the token by saving it to a file, so we
-            # don't need to store it in a variable.
-            auth_manager.get_access_token(query_string["code"], check_cache=False)
-            self.send_response(301)
-            self.send_header("Location", "/")
-            self.end_headers()
-
-        elif path == "/":
-            # Though not documented, this _should_ refresh the token if it's expired
-            tokens = auth_manager.get_cached_token()
-            if not tokens:
-                # If we have no token, we redirect to the Spotify authorisation
-                # URL. This URL in turn redirects to the callback URL with a
-                # magic code in the query string. We use this code to get an
-                # access token, and then can redirect to the root page
-                auth_url = auth_manager.get_authorize_url()
-                self.send_response(301)
-                self.send_header("Location", f"{auth_url}")
-                self.end_headers()
+        if path == "/":
+            query_string = parse_qs(parts.query)
+            cache_path = ".cast_cache"
+            client_id = os.getenv("CAST_CLIENT_ID")
+            client_secret = os.getenv("CAST_CLIENT_SECRET")
+            auth_manager = spotipy.oauth2.SpotifyOAuth(scope=SCOPE,
+                                                       cache_path=cache_path,
+                                                       client_id=client_id,
+                                                       client_secret=client_secret,
+                                                       redirect_uri=REDIRECT_URI)
+            # Spins up a tiny webserver if no cache exists
+            token = auth_manager.get_access_token(as_dict=False)
 
             # If here, then we have valid auth tokens
             if full_path == "/":
@@ -154,7 +147,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                     self.send_response(404)
                     return
 
-                spotify_ctx = spotipy.Spotify(auth=tokens["access_token"])
+                spotify_ctx = spotipy.Spotify(auth=token)
                 if search.startswith("ADMIN"):
                     output = admin_control(search[5:], spotify_ctx)
                 else:
