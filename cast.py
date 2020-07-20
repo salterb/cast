@@ -39,8 +39,9 @@ from urllib.parse import urlparse, parse_qs
 import spotipy
 
 SCOPE = "user-read-playback-state,user-modify-playback-state"
-CAST_PORT = int(os.getenv("CAST_PORT")) or 8080
+CAST_PORT = os.getenv("CAST_PORT") or 8080
 REDIRECT_URI = f"http://localhost:{CAST_PORT}/callback"
+
 SEARCH_FORM = """
 <form id="form1">
     <label for="search">Search:</label><br>
@@ -86,6 +87,8 @@ def admin_control(arg, spotify_ctx):
     elif arg in ("resume", "play"):
         spotify_ctx.start_playback()
         response = "Playback resumed"
+    else:
+        response = ""
     return response
 
 
@@ -162,7 +165,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                 self._write_page(premsg=output.encode())
 
 if __name__ == "__main__":
-    server_address = ("", CAST_PORT)
+    server_address = ("", int(CAST_PORT))
     httpd = HTTPServer(server_address, HTTPRequestHandler)
     print(f"Starting CAST server on localhost, port {CAST_PORT}")
     httpd.serve_forever()
