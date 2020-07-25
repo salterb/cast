@@ -35,7 +35,7 @@ done using the excellent spotipy library.
 """
 
 import os
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 import spotipy
 
@@ -159,6 +159,6 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     server_address = ("", int(CAST_PORT))
-    httpd = HTTPServer(server_address, HTTPRequestHandler)
+    httpd = ThreadingHTTPServer(server_address, HTTPRequestHandler)
     print(f"Starting CAST server on localhost, port {CAST_PORT}")
     httpd.serve_forever()
