@@ -14,7 +14,7 @@ Note that Spotify Premium is required to use this app.
 
 A small amount of work is required to set up the app (but most of this is one-time work).
 
-1. Clone this repository (`git clone git@bitbucket.org:AugmentedCaribou/cast.git`)
+1. Clone this repository (`git clone git@bitbucket.org:AugmentedCaribou/cast.git`).
 1. Register a dummy app on the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/). The name and description aren't important, though you may wish to call it "CAST" or similar. This provides you with a Client ID and a Client Secret, which you'll need.
 1. Inside the app settings, you'll need to set a Redirect URI. This should be set to `http://localhost:9999`.
 1. Save the Client ID and Client Secret as the environment variables `CAST_CLIENT_ID` and `CAST_CLIENT_SECRET`.
@@ -43,7 +43,7 @@ Now everything should be in place to run CAST:
         - On MacOS: open System Preferences -> Network, and click on the first option. Below the "Status" field, it should state your local IP address. 
         - On Windows: Google will be able to tell you how to find it.
 - How do I add an podcast/entire album/something that isn't an individual track to the queue?
-   - Currently, we don't support adding anything other than individual tracks to the queue.
+    - Currently, we don't support adding anything other than individual tracks to the queue.
 - When I refresh the page, it queues the same song twice. How do I stop this behaviour?
     - The search query is encoded in the URL as `http://hostname:3141/?search=track_name`. Refreshing the page will send this query again. You should explicitly navigate to the "root" page (i.e. `http://hostname:3141/`) instead to avoid this.
 - I tried to add a song, and it added one by the wrong artist.
@@ -62,6 +62,12 @@ Now everything should be in place to run CAST:
     - To change the port numbers used, you can set the environment variables `CAST_PORT` and `CAST_REDIRECT_PORT` to whatever (valid) port numbers you like. Note that if you change `CAST_REDIRECT_PORT`, you'll also need to change the Redirect URI accordingly in the Spotify App Dashboard.
 - When trying to run CAST on a device via SSH, I don't get prompted with a window to put my Spotify login details in.
     - CAST will attempt to open a physical web browser using Python's `webbrowser` module. If you're doing this over SSH, you will probably need to ensure you have X11 forwarding enabled.
+- This website looks **awful!** Why haven't you done <X\>/<Y\>/<Z\> with Javascript/CSS/HTML/whatever
+    - A few reasons:
+        - This is still very much in alpha testing.
+        - I don't know how to do any webdev stuff like JS/CSS/HTML.
+        - Websites today use too much JS/CSS to look fancy, and as a result become very large. I don't want someone's personal computer to have to serve enormous websites to people, so I've aimed for the entire website to be deliverable in a single TCP segment. That said, if you want to suggest some lightweight improvements that would make the website look nicer, please let me know!
+    
 - I have a honking great idea for how to improve this app - how do I contribute?
     - Speak to me (Ben).
 - Are these questions really "Frequently Asked"?
