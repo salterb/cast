@@ -58,12 +58,15 @@ def search_and_queue(track_name, spotify_ctx):
     thing found to the list.
     """
     search = spotify_ctx.search(track_name, type="track", limit=1)
-    track = search["tracks"]["items"][0]
-    spotify_ctx.add_to_queue(track["uri"])
-    return_string = (f"Queued:<br>"
-                     f"Song: {track['name']}<br>"
-                     f"Artist: {track['artists'][0]['name']}<br>"
-                     f"Album: {track['album']['name']}<br>")
+    if search["tracks"]["total"] == 0:
+        return_string = (f"No results found for {track_name}<br><br>")
+    else:
+        track = search["tracks"]["items"][0]
+        spotify_ctx.add_to_queue(track["uri"])
+        return_string = (f"Queued:<br>"
+                         f"Song: {track['name']}<br>"
+                         f"Artist: {track['artists'][0]['name']}<br>"
+                         f"Album: {track['album']['name']}<br><br>")
     return return_string
 
 def admin_control(arg, spotify_ctx):
@@ -118,7 +121,6 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         wasteful to reimplement its functionality. This will only happen
         the first time the app is used, since after that we'll have
         cached tokens."""
-        full_path = self.path
         parts = urlparse(self.path)
         path = parts.path
         if path == "/":
@@ -135,7 +137,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             token = auth_manager.get_access_token(as_dict=False)
 
             # If here, then we have valid auth tokens
-            if full_path == "/":
+            if not query_string:
                 self.send_response(200)
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
