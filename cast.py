@@ -40,6 +40,9 @@ from urllib.parse import urlparse, parse_qs
 import spotipy
 
 SCOPE = "user-read-playback-state,user-modify-playback-state"
+CACHE_PATH = ".cast_cache"
+CLIENT_ID = os.getenv("CAST_CLIENT_ID")
+CLIENT_SECRET = os.getenv("CAST_CLIENT_SECRET")
 CAST_PORT = os.getenv("CAST_PORT") or 3141
 CAST_REDIRECT_PORT = os.getenv("CAST_REDIRECT_PORT") or 9999
 REDIRECT_URI = f"http://localhost:{CAST_REDIRECT_PORT}"
@@ -125,13 +128,10 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         path = parts.path
         if path == "/":
             query_string = parse_qs(parts.query)
-            cache_path = ".cast_cache"
-            client_id = os.getenv("CAST_CLIENT_ID")
-            client_secret = os.getenv("CAST_CLIENT_SECRET")
             auth_manager = spotipy.oauth2.SpotifyOAuth(scope=SCOPE,
-                                                       cache_path=cache_path,
-                                                       client_id=client_id,
-                                                       client_secret=client_secret,
+                                                       cache_path=CACHE_PATH,
+                                                       client_id=CLIENT_ID,
+                                                       client_secret=CLIENT_SECRET,
                                                        redirect_uri=REDIRECT_URI)
             # Spins up a tiny webserver if no cache exists
             token = auth_manager.get_access_token(as_dict=False)
