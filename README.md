@@ -18,8 +18,8 @@ A small amount of work is required to set up the app (but most of this is one-ti
 1. Register a dummy app on the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/). The name and description aren't important, though you may wish to call it "CAST" or similar. This provides you with a Client ID and a Client Secret, which you'll need.
 1. Inside the app settings, you'll need to set a Redirect URI. This should be set to `http://localhost:9999`.
 1. Save the Client ID and Client Secret as the environment variables `CAST_CLIENT_ID` and `CAST_CLIENT_SECRET`.
-  - In Bash and other Unix shells, this is done by running `export CAST_CLIENT_ID='...'` (and similar for the Client Secret).
-  - In Windows, Google will be able to tell you how to set environment variables.
+    - In Bash and other Unix shells, this is done by running `export CAST_CLIENT_ID='...'` (and similar for the Client Secret).
+    - In Windows, Google will be able to tell you how to set environment variables.
 1. Install the CAST dependencies (`python3 -m pip install -r requirements.txt`)
 
 
@@ -62,7 +62,7 @@ Now everything should be in place to run CAST:
     - To change the port numbers used, you can set the environment variables `CAST_PORT` and `CAST_REDIRECT_PORT` to whatever (valid) port numbers you like. Note that if you change `CAST_REDIRECT_PORT`, you'll also need to change the Redirect URI accordingly in the Spotify App Dashboard.
 - When trying to run CAST on a device via SSH, I don't get prompted with a window to put my Spotify login details in.
     - CAST will attempt to open a physical web browser using Python's `webbrowser` module. If you're doing this over SSH, you will probably need to ensure you have X11 forwarding enabled.
-- This website looks **awful!** Why haven't you done <X\>/<Y\>/<Z\> with Javascript/CSS/HTML/whatever
+- This website looks **awful!** Why haven't you done <X\>/<Y\>/<Z\> with Javascript/CSS/HTML/whatever?
     - A few reasons:
         - This is still very much in alpha testing.
         - I don't know how to do any webdev stuff like JS/CSS/HTML.
