@@ -40,7 +40,8 @@ from urllib.parse import urlparse, parse_qs
 import spotipy
 
 SCOPE = "user-read-playback-state,user-modify-playback-state"
-CACHE_PATH = ".cast_cache"
+CACHE_PATH = ".cast_token_cache"
+QUEUE_PATH = ".cast_queue"
 CLIENT_ID = os.getenv("CAST_CLIENT_ID")
 CLIENT_SECRET = os.getenv("CAST_CLIENT_SECRET")
 CAST_PORT = os.getenv("CAST_PORT") or 3141
@@ -56,58 +57,38 @@ SEARCH_FORM = """
 <button type="submit" form="form1" value="Submit">Submit</button>
 """
 
-def search_and_queue(track_name, spotify_ctx):
-    """Search Spotify with the desired track name, and add the first
-    thing found to the list.
+def is_queued(track):
+    """Check the queue file to see if a given URI has been queued.
+    In an ideal world, Spotify will update their API to allow users to
+    search the queue, but for the time being, we have to check a file
+    that we update manually. This functionality may change (and may be
+    moved inside the CastHTTPRequestHandler class) if this functionality
+    is ever provided.
     """
-    search = spotify_ctx.search(track_name, type="track", limit=1)
-    if search["tracks"]["total"] == 0:
-        return_string = (f"No results found for {track_name}<br><br>")
-    else:
-        track = search["tracks"]["items"][0]
-        spotify_ctx.add_to_queue(track["uri"])
-        return_string = (f"Queued:<br>"
-                         f"Song: {track['name']}<br>"
-                         f"Artist: {track['artists'][0]['name']}<br>"
-                         f"Album: {track['album']['name']}<br><br>")
-    return return_string
-
-def admin_control(arg, spotify_ctx):
-    """Perform one of a limited set of actions (other than queuing).
-    Options are: pause
-                 current
-                 skip
-                 resume
-    """
-    arg = arg.lower()
-    if arg == "pause":
-        spotify_ctx.pause_playback()
-        response = "Playback paused"
-    elif arg == "current":
-        track = spotify_ctx.currently_playing()["item"]
-        response = (f"Currently playing:<br>"
-                    f"Song: {track['name']}<br>"
-                    f"Artist: {track['artists'][0]['name']}<br>"
-                    f"Album: {track['album']['name']}<br>")
-    elif arg in ("skip", "next"):
-        spotify_ctx.next_track()
-        response = "Skipped to next track"
-    elif arg in ("resume", "play"):
-        spotify_ctx.start_playback()
-        response = "Playback resumed"
-    else:
-        response = ""
-    return response
+    try:
+        with open(QUEUE_PATH, "r") as queue:
+            data = queue.read().splitlines()
+    except FileNotFoundError:
+        data = []
+    for item in data:
+        uri, _ = item.split(" ", maxsplit=1)
+        if uri == track["uri"]:
+            return True
+    return False
 
 
-class HTTPRequestHandler(BaseHTTPRequestHandler):
+class CastHTTPRequestHandler(BaseHTTPRequestHandler):
     """A simple request handler to deal with the limited set of requests
     that CAST expects to receive. Absolutely zero security has gone into
     this. If it breaks then welp.
     """
+    def __init__(self, *args, **kwargs):
+        self.spotify_ctx = None
+        super().__init__(*args, **kwargs)
+
     def _write_page(self, premsg=b""):
         """Helper function to write the basic HTML page, with a
-        prepended string if desired"""
+        prepended string if desired."""
         if premsg:
             self.wfile.write(premsg)
         self.wfile.write(SEARCH_FORM.encode())
@@ -149,18 +130,76 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                     self.send_response(404)
                     return
 
-                spotify_ctx = spotipy.Spotify(auth=token)
+                self.spotify_ctx = spotipy.Spotify(auth=token)
                 if search.startswith("ADMIN"):
-                    output = admin_control(search[5:], spotify_ctx)
+                    output = self.admin_control(search[5:])
                 else:
-                    output = search_and_queue(search, spotify_ctx)
+                    output = self.search_and_queue(search)
                 self.send_response(200)
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
                 self._write_page(premsg=output.encode())
 
+    def _queue_track(self, track):
+        """Queue a track. Adds to the Spotify queue, and updates the
+        queue file with the new track.
+        """
+        self.spotify_ctx.add_to_queue(track["uri"])
+        with open(QUEUE_PATH, "a") as queue:
+            queue.write(f"{track['uri']} {track['name']}{os.linesep}")
+
+    def search_and_queue(self, track_name):
+        """Search Spotify with the desired track name, and add the first
+        thing found to the list.
+        """
+        search = self.spotify_ctx.search(track_name, type="track", limit=1)
+        if search["tracks"]["total"] == 0:
+            return f"No results found for {track_name}.<br><br>"
+
+        track = search["tracks"]["items"][0]
+        if is_queued(track):
+            return f"{track['name']} has already been queued.<br><br>"
+
+        try:
+            self._queue_track(track)
+            return_string = (f"Queued:<br>"
+                             f"Song: {track['name']}<br>"
+                             f"Artist: {track['artists'][0]['name']}<br>"
+                             f"Album: {track['album']['name']}<br><br>")
+        except spotipy.exceptions.SpotifyException as exc:
+            print(exc)
+            return_string = "Error queuing track - possibly no active device?<br><br>"
+        return return_string
+
+    def admin_control(self, arg):
+        """Perform one of a limited set of actions (other than queuing).
+        Options are: pause
+                     current
+                     skip
+                     resume
+        """
+        arg = arg.lower()
+        if arg == "pause":
+            self.spotify_ctx.pause_playback()
+            response = "Playback paused."
+        elif arg == "current":
+            track = self.spotify_ctx.currently_playing()["item"]
+            response = (f"Currently playing:<br>"
+                        f"Song: {track['name']}<br>"
+                        f"Artist: {track['artists'][0]['name']}<br>"
+                        f"Album: {track['album']['name']}<br>")
+        elif arg in ("skip", "next"):
+            self.spotify_ctx.next_track()
+            response = "Skipped to next track."
+        elif arg in ("resume", "play"):
+            self.spotify_ctx.start_playback()
+            response = "Playback resumed."
+        else:
+            response = ""
+        return response
+
 if __name__ == "__main__":
     server_address = ("", int(CAST_PORT))
-    httpd = ThreadingHTTPServer(server_address, HTTPRequestHandler)
-    print(f"Starting CAST server on localhost, port {CAST_PORT}")
+    httpd = ThreadingHTTPServer(server_address, CastHTTPRequestHandler)
+    print(f"Starting CAST server on localhost, port {CAST_PORT}.")
     httpd.serve_forever()
