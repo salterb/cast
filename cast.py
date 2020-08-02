@@ -188,7 +188,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
             response = (f"Currently playing:<br>"
                         f"Song: {track['name']}<br>"
                         f"Artist: {track['artists'][0]['name']}<br>"
-                        f"Album: {track['album']['name']}<br>")
+                        f"Album: {track['album']['name']}<br><br>")
         elif arg in ("skip", "next"):
             self.spotify_ctx.next_track()
             response = "Skipped to next track."
