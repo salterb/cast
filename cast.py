@@ -148,7 +148,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         with open(QUEUE_PATH, "a") as queue:
             queue.write(f"{track['uri']} {track['name']}{os.linesep}")
 
-    def search_and_queue(self, track_name):
+    def search_and_queue(self, track_name, check_queue=True):
         """Search Spotify with the desired track name, and add the first
         thing found to the list.
         """
@@ -157,7 +157,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
             return f"No results found for {track_name}.<br><br>"
 
         track = search["tracks"]["items"][0]
-        if is_queued(track):
+        if check_queue and is_queued(track):
             return f"{track['name']} has already been queued.<br><br>"
 
         try:
@@ -177,6 +177,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                      current
                      skip
                      resume
+                     force (add to queue even if already queued)
         """
         arg = arg.lower()
         if arg == "pause":
@@ -194,9 +195,12 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         elif arg in ("resume", "play"):
             self.spotify_ctx.start_playback()
             response = "Playback resumed."
+        elif arg[:6] == "force ":
+            response = self.search_and_queue(arg[6:], check_queue=False)
         else:
             response = ""
         return response
+
 
 if __name__ == "__main__":
     server_address = ("", int(CAST_PORT))
