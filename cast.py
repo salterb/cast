@@ -1,5 +1,4 @@
-"""
-CAST.
+"""CAST.
 Author: Ben Salter
 
 CAST (Collaboraive Addition of Spotify Tunes) is a simple program to
@@ -82,9 +81,11 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
     that CAST expects to receive. Absolutely zero security has gone into
     this. If it breaks then welp.
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, request, client_address, server):
+        # IP/port of requester can be accessed with self.client_address
+        self.client_ip = client_address[0]
         self.spotify_ctx = None
-        super().__init__(*args, **kwargs)
+        super().__init__(request, client_address, server)
 
     def _write_page(self, premsg=b""):
         """Helper function to write the basic HTML page, with a
