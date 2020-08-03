@@ -56,6 +56,7 @@ SEARCH_FORM = """
 <button type="submit" form="form1" value="Submit">Submit</button>
 """
 
+
 def is_queued(track):
     """Check the queue file to see if a given URI has been queued.
     In an ideal world, Spotify will update their API to allow users to
@@ -94,7 +95,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(premsg)
         self.wfile.write(SEARCH_FORM.encode())
 
-    def do_GET(self):
+    def do_GET(self):  # pylint: disable=invalid-name
         """Respond to HTTP GET request.
 
         If no cached access token is found, this spins up another little
@@ -105,7 +106,8 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         get_access_token() method does so much for us that it seems
         wasteful to reimplement its functionality. This will only happen
         the first time the app is used, since after that we'll have
-        cached tokens."""
+        cached tokens.
+        """
         parts = urlparse(self.path)
         path = parts.path
         if path == "/":
