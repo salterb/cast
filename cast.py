@@ -41,10 +41,15 @@ import spotipy
 SCOPE = "user-read-playback-state,user-modify-playback-state"
 CACHE_PATH = ".cast_token_cache"
 QUEUE_PATH = ".cast_queue"
+ADMIN_PREFIX = os.getenv("CAST_ADMIN_PREFIX", default="ADMIN")
+
 CLIENT_ID = os.getenv("CAST_CLIENT_ID")
 CLIENT_SECRET = os.getenv("CAST_CLIENT_SECRET")
-CAST_PORT = os.getenv("CAST_PORT") or 3141
-CAST_REDIRECT_PORT = os.getenv("CAST_REDIRECT_PORT") or 9999
+if not CLIENT_ID or not CLIENT_SECRET:
+    raise ValueError("Environment variables CLIENT_ID and CLIENT_SECRET must be set")
+
+CAST_PORT = os.getenv("CAST_PORT", default="3141")
+CAST_REDIRECT_PORT = os.getenv("CAST_REDIRECT_PORT", default="9999")
 REDIRECT_URI = f"http://localhost:{CAST_REDIRECT_PORT}"
 
 SEARCH_FORM = """
@@ -134,8 +139,9 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                     return
 
                 self.spotify_ctx = spotipy.Spotify(auth=token)
-                if search.startswith("ADMIN"):
-                    output = self.admin_control(search[5:])
+                if search.startswith(ADMIN_PREFIX):
+                    #XXX In Python3.9, replace with str.removeprefix()
+                    output = self.admin_control(search[len(ADMIN_PREFIX):])
                 else:
                     output = self.search_and_queue(search)
                 self.send_response(200)
@@ -182,7 +188,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                      resume
                      force (add to queue even if already queued)
         """
-        arg = arg.lower()
+        arg = arg.lower().strip()
         if arg == "pause":
             self.spotify_ctx.pause_playback()
             response = "Playback paused."

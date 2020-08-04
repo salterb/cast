@@ -40,14 +40,20 @@ Now everything should be in place to run CAST:
 - How do I find my computer's IP address/hostname to give to my friends?
     - Google will be able to answer this question better than me, but this may help:
         - On Linux: run `hostname`/`hostname -I` to get your hostname/IP address.
-        - On MacOS: open System Preferences -> Network, and click on the first option. Below the "Status" field, it should state your local IP address. 
+        - On MacOS: open System Preferences -> Network, and click on the first option. Below the "Status" field, it should state your local IP address.
         - On Windows: Google will be able to tell you how to find it.
 - How do I add an podcast/entire album/something that isn't an individual track to the queue?
     - Currently, we don't support adding anything other than individual tracks to the queue.
 - I tried to add a song, and it added one by the wrong artist.
     - Sadly, CAST cannot read your mind. It simply searches Spotify with your query and puts the first track it finds on the queue. For the best chance of success, put both the track name and the artist in the search field.
-- Can I skip a track?
-    - There's a limited number of "admin" actions (that may change/increase over time), including the ability to skip a track. They currently aren't documented, but you could probably work it out from the source code.
+- It's my house - are there actions that I can do but my guests can't?
+    - Yes! There are a limited number of "admin actions", which are performed by typing the string `ADMIN`, followed by the action. The list of actions are:
+        - `ADMIN pause` - pause the playback.
+        - `ADMIN current` - get info about the track currently playing.
+        - `ADMIN skip`/`ADMIN next` - skip the current track.
+        - `ADMIN play`/`ADMIN resume` - resume the playback after being paused.
+        - `ADMIN force foo` - add the track `foo` to the queue, even if already queued.
+    - If the `ADMIN` prefix is too predictable, you can set your own by setting the environment variable `CAST_ADMIN_PREFIX`.
 - How do I shuffle the queue?
     - Unfortunately, Spotify doesn't support shuffling the playback queue. Future versions of CAST may choose to add to a playlist, which CAN be shuffled.
 - Does the device playing back the music have to be the same one hosting the webserver?
@@ -65,7 +71,7 @@ Now everything should be in place to run CAST:
         - This is still very much in alpha testing.
         - I don't know how to do any webdev stuff like JS/CSS/HTML.
         - Websites today use too much JS/CSS to look fancy, and as a result become very large. I don't want someone's personal computer to have to serve enormous websites to people, so I've aimed for the entire website to be deliverable in a single TCP segment. That said, if you want to suggest some lightweight improvements that would make the website look nicer, please let me know!
-    
+
 - I have a honking great idea for how to improve this app - how do I contribute?
     - Speak to me (Ben).
 - Are these questions really "Frequently Asked"?
