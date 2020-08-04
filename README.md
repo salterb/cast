@@ -44,8 +44,6 @@ Now everything should be in place to run CAST:
         - On Windows: Google will be able to tell you how to find it.
 - How do I add an podcast/entire album/something that isn't an individual track to the queue?
     - Currently, we don't support adding anything other than individual tracks to the queue.
-- When I refresh the page, it queues the same song twice. How do I stop this behaviour?
-    - The search query is encoded in the URL as `http://hostname:3141/?search=track_name`. Refreshing the page will send this query again. You should explicitly navigate to the "root" page (i.e. `http://hostname:3141/`) instead to avoid this.
 - I tried to add a song, and it added one by the wrong artist.
     - Sadly, CAST cannot read your mind. It simply searches Spotify with your query and puts the first track it finds on the queue. For the best chance of success, put both the track name and the artist in the search field.
 - Can I skip a track?
