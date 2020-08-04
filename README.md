@@ -14,7 +14,7 @@ Note that Spotify Premium is required to use this app.
 
 A small amount of work is required to set up the app (but most of this is one-time work).
 
-1. Clone this repository (`git clone git@bitbucket.org:AugmentedCaribou/cast.git`).
+1. Clone this repository (`git clone git@github.com:salterb/cast.git`).
 1. Register a dummy app on the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/). The name and description aren't important, though you may wish to call it "CAST" or similar. This provides you with a Client ID and a Client Secret, which you'll need.
 1. Inside the app settings, you'll need to set a Redirect URI. This should be set to `http://localhost:9999`.
 1. Save the Client ID and Client Secret as the environment variables `CAST_CLIENT_ID` and `CAST_CLIENT_SECRET`.
