@@ -52,7 +52,8 @@ Now everything should be in place to run CAST:
         - `ADMIN current` - get info about the track currently playing.
         - `ADMIN skip`/`ADMIN next` - skip the current track.
         - `ADMIN play`/`ADMIN resume` - resume the playback after being paused.
-        - `ADMIN force foo` - add the track `foo` to the queue, even if already queued.
+        - `ADMIN queue foo` - add the track `foo` to the queue, even if already queued.
+        - `ADMIN force foo` - immediately play the track `foo`, interrupting current song.
     - If the `ADMIN` prefix is too predictable, you can set your own by setting the environment variable `CAST_ADMIN_PREFIX`.
 - How do I shuffle the queue?
     - Unfortunately, Spotify doesn't support shuffling the playback queue. Future versions of CAST may choose to add to a playlist, which CAN be shuffled.

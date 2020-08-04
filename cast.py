@@ -140,7 +140,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
 
                 self.spotify_ctx = spotipy.Spotify(auth=token)
                 if search.startswith(ADMIN_PREFIX):
-                    #XXX In Python3.9, replace with str.removeprefix()
+                    # Note: In Python3.9, replace with str.removeprefix()
                     output = self.admin_control(search[len(ADMIN_PREFIX):])
                 else:
                     output = self.search_and_queue(search)
@@ -148,6 +148,15 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
                 self._write_page(premsg=output.encode())
+
+    def _search_track(self, track_name):
+        """Search for a track, and return a track object if found, or
+        None if not.
+        """
+        search = self.spotify_ctx.search(track_name, type="track", limit=1)
+        if search["tracks"]["total"] == 0:
+            return None
+        return search["tracks"]["items"][0]
 
     def _queue_track(self, track):
         """Queue a track. Adds to the Spotify queue, and updates the
@@ -161,11 +170,10 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         """Search Spotify with the desired track name, and add the first
         thing found to the list.
         """
-        search = self.spotify_ctx.search(track_name, type="track", limit=1)
-        if search["tracks"]["total"] == 0:
+        track = self._search_track(track_name)
+        if track is None:
             return f"No results found for {track_name}.<br><br>"
 
-        track = search["tracks"]["items"][0]
         if check_queue and is_queued(track):
             return f"{track['name']} has already been queued.<br><br>"
 
@@ -186,7 +194,10 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                      current
                      skip
                      resume
-                     force (add to queue even if already queued)
+                     queue foo (add `foo` to queue, even if already
+                                queued)
+                     force foo (immediately search and play `foo`,
+                                interrupting current track)
         """
         arg = arg.lower().strip()
         if arg == "pause":
@@ -204,10 +215,17 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         elif arg in ("resume", "play"):
             self.spotify_ctx.start_playback()
             response = "Playback resumed."
-        elif arg[:6] == "force ":
+        elif arg.startswith("queue "):
             response = self.search_and_queue(arg[6:], check_queue=False)
+        elif arg.startswith("force "):
+            track = self._search_track(arg[6:])
+            if not track:
+                response = f"Failed to find track {arg[6:]}"
+            else:
+                self.spotify_ctx.start_playback(uris=[track["uri"]])
+                response = f"Forcing playback of {track['name']}"
         else:
-            response = ""
+            response = f"Unrecognised admin action: {arg}"
         return response
 
 
