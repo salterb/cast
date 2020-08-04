@@ -71,7 +71,7 @@ def is_queued(track):
     except FileNotFoundError:
         data = []
     for item in data:
-        uri, _ = item.split(" ", maxsplit=1)
+        uri, _, _ = item.split(" ", maxsplit=2)
         if uri == track["uri"]:
             return True
     return False
@@ -149,7 +149,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         """
         self.spotify_ctx.add_to_queue(track["uri"])
         with open(QUEUE_PATH, "a") as queue:
-            queue.write(f"{track['uri']} {track['name']}{os.linesep}")
+            queue.write(f"{track['uri']} {self.client_ip} {track['name']}{os.linesep}")
 
     def search_and_queue(self, track_name, check_queue=True):
         """Search Spotify with the desired track name, and add the first
