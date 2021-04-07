@@ -143,8 +143,8 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
 
                 self.spotify_ctx = spotipy.client.Spotify(auth=token)
                 if search.startswith(ADMIN_PREFIX):
-                    # Note: In Python3.9, replace with str.removeprefix()
                     output = self.admin_control(search[len(ADMIN_PREFIX):])
+                    output = self.admin_control(search.removeprefix(ADMIN_PREFIX))
                 else:
                     output = self.search_and_queue(search)
                 self.send_response(200)
@@ -200,6 +200,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                      force (add to queue even if already queued)
         """
         arg = arg.lower().strip()
+        # Note: In Python 3.10, maybe use pattern-matching here?
         if arg == "pause":
             self.spotify_ctx.pause_playback()
             response = "Playback paused."
