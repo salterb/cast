@@ -143,7 +143,6 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
 
                 self.spotify_ctx = spotipy.client.Spotify(auth=token)
                 if search.startswith(ADMIN_PREFIX):
-                    output = self.admin_control(search[len(ADMIN_PREFIX):])
                     output = self.admin_control(search.removeprefix(ADMIN_PREFIX))
                 else:
                     output = self.search_and_queue(search)
