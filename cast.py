@@ -36,6 +36,7 @@ done using the excellent spotipy library.
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
+
 import spotipy
 
 SCOPE = "user-read-playback-state,user-modify-playback-state"
@@ -46,8 +47,7 @@ ADMIN_PREFIX = os.getenv("CAST_ADMIN_PREFIX", default="ADMIN")
 CLIENT_ID = os.getenv("CAST_CLIENT_ID")
 CLIENT_SECRET = os.getenv("CAST_CLIENT_SECRET")
 if not CLIENT_ID or not CLIENT_SECRET:
-    raise ValueError("Environment variables CAST_CLIENT_ID and "
-                     "CAST_CLIENT_SECRET must be set")
+    raise ValueError("Environment variables CLIENT_ID and CLIENT_SECRET must be set")
 
 CAST_PORT = os.getenv("CAST_PORT", default="3141")
 CAST_REDIRECT_PORT = os.getenv("CAST_REDIRECT_PORT", default="9999")
@@ -118,11 +118,13 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         path = parts.path
         if path == "/":
             query_string = parse_qs(parts.query)
+            cache_handler = spotipy.cache_handler.CacheFileHandler(cache_path=CACHE_PATH)
             auth_manager = spotipy.oauth2.SpotifyOAuth(scope=SCOPE,
-                                                       cache_path=CACHE_PATH,
+                                                       cache_handler=cache_handler,
                                                        client_id=CLIENT_ID,
                                                        client_secret=CLIENT_SECRET,
-                                                       redirect_uri=REDIRECT_URI)
+                                                       redirect_uri=REDIRECT_URI,
+                                                       open_browser=True)
             # Spins up a tiny webserver if no cache exists
             token = auth_manager.get_access_token(as_dict=False)
 
@@ -139,7 +141,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                     self.send_response(404)
                     return
 
-                self.spotify_ctx = spotipy.Spotify(auth=token)
+                self.spotify_ctx = spotipy.client.Spotify(auth=token)
                 if search.startswith(ADMIN_PREFIX):
                     # Note: In Python3.9, replace with str.removeprefix()
                     output = self.admin_control(search[len(ADMIN_PREFIX):])
@@ -151,8 +153,8 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                 self._write_page(premsg=output.encode())
 
     def _search_track(self, track_name):
-        """Search for a track, and return a track object if found, or
-        None if not.
+        """Search for a track, and return a track object if found,
+        or None if not.
         """
         search = self.spotify_ctx.search(track_name, type="track", limit=1)
         if search["tracks"]["total"] == 0:
@@ -195,10 +197,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                      current
                      skip
                      resume
-                     queue foo (add `foo` to queue, even if already
-                                queued)
-                     force foo (immediately search and play `foo`,
-                                interrupting current track)
+                     force (add to queue even if already queued)
         """
         arg = arg.lower().strip()
         if arg == "pause":
@@ -216,9 +215,9 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         elif arg in ("resume", "play"):
             self.spotify_ctx.start_playback()
             response = "Playback resumed."
-        elif arg.startswith("queue "):
+        elif arg.startswith("queue "):  # Force queue even if song already queued.
             response = self.search_and_queue(arg[6:], check_queue=False)
-        elif arg.startswith("force "):
+        elif arg.startswith("force "):  # Immediately play track, interrupting current track.
             track = self._search_track(arg[6:])
             if not track:
                 response = f"Failed to find track {arg[6:]}"
