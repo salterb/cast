@@ -88,6 +88,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
     that CAST expects to receive. Absolutely zero security has gone into
     this. If it breaks then welp.
     """
+
     def __init__(self, request, client_address, server):
         # IP/port of requester can be accessed with self.client_address
         self.client_ip = client_address[0]
@@ -119,12 +120,14 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         if path == "/":
             query_string = parse_qs(parts.query)
             cache_handler = spotipy.cache_handler.CacheFileHandler(cache_path=CACHE_PATH)
-            auth_manager = spotipy.oauth2.SpotifyOAuth(scope=SCOPE,
-                                                       cache_handler=cache_handler,
-                                                       client_id=CLIENT_ID,
-                                                       client_secret=CLIENT_SECRET,
-                                                       redirect_uri=REDIRECT_URI,
-                                                       open_browser=True)
+            auth_manager = spotipy.oauth2.SpotifyOAuth(
+                scope=SCOPE,
+                cache_handler=cache_handler,
+                client_id=CLIENT_ID,
+                client_secret=CLIENT_SECRET,
+                redirect_uri=REDIRECT_URI,
+                open_browser=True,
+            )
             # Spins up a tiny webserver if no cache exists
             token = auth_manager.get_access_token(as_dict=False)
 
@@ -181,10 +184,12 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
 
         try:
             self._queue_track(track)
-            return_string = (f"Queued:<br>"
-                             f"Song: {track['name']}<br>"
-                             f"Artist: {track['artists'][0]['name']}<br>"
-                             f"Album: {track['album']['name']}<br><br>")
+            return_string = (
+                f"Queued:<br>"
+                f"Song: {track['name']}<br>"
+                f"Artist: {track['artists'][0]['name']}<br>"
+                f"Album: {track['album']['name']}<br><br>"
+            )
         except spotipy.exceptions.SpotifyException as exc:
             print(exc)
             return_string = "Error queuing track - possibly no active device?<br><br>"
@@ -205,10 +210,12 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
             response = "Playback paused."
         elif arg == "current":
             track = self.spotify_ctx.currently_playing()["item"]
-            response = (f"Currently playing:<br>"
-                        f"Song: {track['name']}<br>"
-                        f"Artist: {track['artists'][0]['name']}<br>"
-                        f"Album: {track['album']['name']}<br><br>")
+            response = (
+                f"Currently playing:<br>"
+                f"Song: {track['name']}<br>"
+                f"Artist: {track['artists'][0]['name']}<br>"
+                f"Album: {track['album']['name']}<br><br>"
+            )
         elif arg in ("skip", "next"):
             self.spotify_ctx.next_track()
             response = "Skipped to next track."
