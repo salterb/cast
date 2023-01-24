@@ -47,7 +47,7 @@ ADMIN_PREFIX = os.getenv("CAST_ADMIN_PREFIX", default="ADMIN")
 CLIENT_ID = os.getenv("CAST_CLIENT_ID")
 CLIENT_SECRET = os.getenv("CAST_CLIENT_SECRET")
 if not CLIENT_ID or not CLIENT_SECRET:
-    raise ValueError("Environment variables CLIENT_ID and CLIENT_SECRET must be set")
+    raise ValueError("Environment variables CAST_CLIENT_ID and CAST_CLIENT_SECRET must be set")
 
 CAST_PORT = os.getenv("CAST_PORT", default="3141")
 CAST_REDIRECT_PORT = os.getenv("CAST_REDIRECT_PORT", default="9999")
