@@ -2,3 +2,5 @@ __pycache__
 .cast_token_cache
 .cast_queue
 *~
+*.yml
+!config/example.yml
