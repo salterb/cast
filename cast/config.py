@@ -10,6 +10,7 @@ import yaml
 class CastConfig:
     """Object holding CAST configuration info."""
     def __init__(self, config_dict: dict[str, str | int | bool]):
+        self.website_name = str(config_dict["website_name"])
         self.cache_path = str(config_dict["cache_path"])
         self.queue = str(config_dict["song_queue"])
         self.admin_prefix = str(config_dict["admin_prefix"])

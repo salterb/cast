@@ -1,3 +1,5 @@
+server_name: "CAST server"
+
 cache_path: ".cast_token_cache"
 queue: ".cast_queue"
 admin_prefix: "ADMIN"

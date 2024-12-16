@@ -34,6 +34,7 @@ done using the excellent spotipy library.
 """
 
 import os
+import pathlib
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from typing import Any
@@ -43,17 +44,11 @@ import spotipy  # type: ignore[import-untyped]
 from cast.config import CastConfig
 
 JSON = dict[str, Any]
-
 SCOPE = "user-read-playback-state,user-modify-playback-state"
+WEBDIR = pathlib.Path(__file__).parent / "web"
 
-SEARCH_FORM = """
-<form id="form1">
-    <label for="search">Search:</label><br>
-    <input type="text" id="search" name="search"><br>
-</form>
+CONTENT_TYPES = {".html": "text/html", ".css": "text/css"}
 
-<button type="submit" form="form1" value="Submit">Submit</button>
-"""
 
 
 class CastHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -73,14 +68,19 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         self.client_ip = client_address[0]
         self.spotify_ctx: spotipy.client.Spotify = None
         self.config = config
+        with open(WEBDIR / "index.html", encoding="utf-8") as f:
+            self.webpage_template = f.read()
         super().__init__(request, client_address, server)
 
-    def _write_page(self, premsg: bytes = b"") -> None:
+    def _write_index_page(self, premsg: str = "") -> None:
         """Helper function to write the basic HTML page, with a
-        prepended string if desired."""
-        if premsg:
-            self.wfile.write(premsg)
-        self.wfile.write(SEARCH_FORM.encode())
+        prepended string if desired.
+        """
+        page_content = self.webpage_template.format(
+            title_text=self.config.website_name,
+            premsg=premsg,
+        )
+        self.wfile.write(page_content.encode())
 
     def do_GET(self) -> None:  # pylint: disable=invalid-name
         """Respond to HTTP GET request.
@@ -95,8 +95,29 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         the first time the app is used, since after that we'll have
         cached tokens.
         """
+        allowed_extensions = (".html", ".css")
         parts = urlparse(self.path)
         path = parts.path
+        if path != "/" and not any(path.endswith(extension) for extension in allowed_extensions):
+            self.send_response(403)
+            return
+        if path != "/":
+            abspath = WEBDIR / path.removeprefix("/")
+            try:
+                with open(abspath, encoding="utf-8") as f:
+                    data = f.read()
+                self.send_response(200)
+                self.send_header("Content-type", f"{CONTENT_TYPES[abspath.suffix]}")
+                self.end_headers()
+                self.wfile.write(data.encode())
+            except FileNotFoundError:
+                print(os.listdir())
+                self.send_response(404)
+            return
+
+        # Handle root differently
+        # TODO the auth stuff needs to be separated out really (and
+        # possibly refreshed via a property), this is ridiculous.
         if path == "/":
             query_string = parse_qs(parts.query)
             cache_handler = spotipy.cache_handler.CacheFileHandler(
@@ -118,7 +139,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
-                self._write_page(premsg="Hello!".encode())
+                self._write_index_page(premsg="Hello!")
             else:
                 try:
                     search = query_string["search"][0]
@@ -134,7 +155,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
-                self._write_page(premsg=output.encode())
+                self._write_index_page(premsg=output)
 
     def _search_track(self, track_name: str) -> JSON | None:
         """Search for a track, and return a track object if found,
