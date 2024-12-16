@@ -4,3 +4,4 @@ __pycache__
 *~
 *.yml
 !config/example.yml
+*.egg-info

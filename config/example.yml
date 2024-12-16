@@ -1,0 +1,9 @@
+cache_path: ".cast_token_cache"
+queue: ".cast_queue"
+admin_prefix: "ADMIN"
+
+client_id: 0123456789abcdeffedcba9876543210
+client_secret: fedcab98765432100123456789abcdef
+
+cast_port: 3141
+cast_redirect_port: 9999

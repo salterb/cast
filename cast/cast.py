@@ -34,24 +34,17 @@ done using the excellent spotipy library.
 """
 
 import os
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+from typing import Any
 
-import spotipy
+import spotipy  # type: ignore[import-untyped]
+
+from cast.config import CastConfig
+
+JSON = dict[str, Any]
 
 SCOPE = "user-read-playback-state,user-modify-playback-state"
-CACHE_PATH = ".cast_token_cache"
-QUEUE_PATH = ".cast_queue"
-ADMIN_PREFIX = os.getenv("CAST_ADMIN_PREFIX", default="ADMIN")
-
-CLIENT_ID = os.getenv("CAST_CLIENT_ID")
-CLIENT_SECRET = os.getenv("CAST_CLIENT_SECRET")
-if not CLIENT_ID or not CLIENT_SECRET:
-    raise ValueError("Environment variables CAST_CLIENT_ID and CAST_CLIENT_SECRET must be set")
-
-CAST_PORT = os.getenv("CAST_PORT", default="3141")
-CAST_REDIRECT_PORT = os.getenv("CAST_REDIRECT_PORT", default="9999")
-REDIRECT_URI = f"http://localhost:{CAST_REDIRECT_PORT}"
 
 SEARCH_FORM = """
 <form id="form1">
@@ -63,46 +56,33 @@ SEARCH_FORM = """
 """
 
 
-def is_queued(track):
-    """Check the queue file to see if a given URI has been queued.
-    In an ideal world, Spotify will update their API to allow users to
-    search the queue, but for the time being, we have to check a file
-    that we update manually. This functionality may change (and may be
-    moved inside the CastHTTPRequestHandler class) if this functionality
-    is ever provided.
-    """
-    try:
-        with open(QUEUE_PATH, "r") as queue:
-            data = queue.read().splitlines()
-    except FileNotFoundError:
-        data = []
-    for item in data:
-        uri, _, _ = item.split(" ", maxsplit=2)
-        if uri == track["uri"]:
-            return True
-    return False
-
-
 class CastHTTPRequestHandler(BaseHTTPRequestHandler):
     """A simple request handler to deal with the limited set of requests
     that CAST expects to receive. Absolutely zero security has gone into
     this. If it breaks then welp.
     """
 
-    def __init__(self, request, client_address, server):
+    # BaseHTTPRequestHandler (or rather, socketserver.BaseRequestHandler)
+    # has a slightly unfortunate design that makes it closed to extension,
+    # so we can't just slip in an extra argument at the end.
+    # Instead, we have to do something a bit wonky and use
+    # functools.partial (see __main__.py), which requires placing the
+    # config argument at the beginning.
+    def __init__(self, config: CastConfig, request, client_address, server):
         # IP/port of requester can be accessed with self.client_address
         self.client_ip = client_address[0]
-        self.spotify_ctx = None
+        self.spotify_ctx: spotipy.client.Spotify = None
+        self.config = config
         super().__init__(request, client_address, server)
 
-    def _write_page(self, premsg=b""):
+    def _write_page(self, premsg: bytes = b"") -> None:
         """Helper function to write the basic HTML page, with a
         prepended string if desired."""
         if premsg:
             self.wfile.write(premsg)
         self.wfile.write(SEARCH_FORM.encode())
 
-    def do_GET(self):  # pylint: disable=invalid-name
+    def do_GET(self) -> None:  # pylint: disable=invalid-name
         """Respond to HTTP GET request.
 
         If no cached access token is found, this spins up another little
@@ -119,13 +99,15 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         path = parts.path
         if path == "/":
             query_string = parse_qs(parts.query)
-            cache_handler = spotipy.cache_handler.CacheFileHandler(cache_path=CACHE_PATH)
+            cache_handler = spotipy.cache_handler.CacheFileHandler(
+                cache_path=self.config.cache_path
+            )
             auth_manager = spotipy.oauth2.SpotifyOAuth(
                 scope=SCOPE,
                 cache_handler=cache_handler,
-                client_id=CLIENT_ID,
-                client_secret=CLIENT_SECRET,
-                redirect_uri=REDIRECT_URI,
+                client_id=self.config.client_id,
+                client_secret=self.config.client_secret,
+                redirect_uri=self.config.redirect_uri,
                 open_browser=True,
             )
             # Spins up a tiny webserver if no cache exists
@@ -145,8 +127,8 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                     return
 
                 self.spotify_ctx = spotipy.client.Spotify(auth=token)
-                if search.startswith(ADMIN_PREFIX):
-                    output = self.admin_control(search.removeprefix(ADMIN_PREFIX))
+                if search.startswith(self.config.admin_prefix):
+                    output = self.admin_control(search.removeprefix(self.config.admin_prefix))
                 else:
                     output = self.search_and_queue(search)
                 self.send_response(200)
@@ -154,7 +136,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self._write_page(premsg=output.encode())
 
-    def _search_track(self, track_name):
+    def _search_track(self, track_name: str) -> JSON | None:
         """Search for a track, and return a track object if found,
         or None if not.
         """
@@ -163,15 +145,34 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
             return None
         return search["tracks"]["items"][0]
 
-    def _queue_track(self, track):
+    def _queue_track(self, track: JSON) -> None:
         """Queue a track. Adds to the Spotify queue, and updates the
         queue file with the new track.
         """
         self.spotify_ctx.add_to_queue(track["uri"])
-        with open(QUEUE_PATH, "a") as queue:
+        with open(self.config.queue, "a", encoding="utf-8") as queue:
             queue.write(f"{track['uri']} {self.client_ip} {track['name']}{os.linesep}")
 
-    def search_and_queue(self, track_name, check_queue=True):
+    def _is_queued(self, track: JSON) -> bool:
+        """Check the queue file to see if a given URI has been queued.
+        In an ideal world, Spotify will update their API to allow users to
+        search the queue, but for the time being, we have to check a file
+        that we update manually. This functionality may change (and may be
+        moved inside the CastHTTPRequestHandler class) if this functionality
+        is ever provided.
+        """
+        try:
+            with open(self.config.queue, encoding="utf-8") as queue:
+                data = queue.read().splitlines()
+        except FileNotFoundError:
+            data = []
+        for item in data:
+            uri, _, _ = item.split(" ", maxsplit=2)
+            if uri == track["uri"]:
+                return True
+        return False
+
+    def search_and_queue(self, track_name: str, check_queue: bool = True) -> str:
         """Search Spotify with the desired track name, and add the first
         thing found to the list.
         """
@@ -179,7 +180,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         if track is None:
             return f"No results found for {track_name}.<br><br>"
 
-        if check_queue and is_queued(track):
+        if check_queue and self._is_queued(track):
             return f"{track['name']} has already been queued.<br><br>"
 
         try:
@@ -195,7 +196,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
             return_string = "Error queuing track - possibly no active device?<br><br>"
         return return_string
 
-    def admin_control(self, arg):
+    def admin_control(self, arg: str) -> str:
         """Perform one of a limited set of actions (other than queuing).
         Options are: pause
                      current
@@ -234,10 +235,3 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
         else:
             response = f"Unrecognised admin action: {arg}"
         return response
-
-
-if __name__ == "__main__":
-    server_address = ("", int(CAST_PORT))
-    httpd = ThreadingHTTPServer(server_address, CastHTTPRequestHandler)
-    print(f"Starting CAST server on localhost, port {CAST_PORT}.")
-    httpd.serve_forever()
