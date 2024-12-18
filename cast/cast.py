@@ -37,7 +37,7 @@ import os
 import pathlib
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
-from typing import Any
+from typing import Any, Optional
 
 import spotipy  # type: ignore[import-untyped]
 
@@ -160,7 +160,7 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self._write_index_page(premsg=output)
 
-    def _search_track(self, track_name: str) -> JSON | None:
+    def _search_track(self, track_name: str) -> Optional[JSON]:
         """Search for a track, and return a track object if found,
         or None if not.
         """
