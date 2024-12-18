@@ -13,6 +13,11 @@ h1, h2, h3 {
     line-height: 1.2
 }
 
+button {
+    font-size: 16px;
+    padding: 5px;
+}
+
 .box {
     border: 1px solid black;
     border-radius: 15px;
