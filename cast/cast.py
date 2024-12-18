@@ -66,11 +66,32 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
     def __init__(self, config: CastConfig, request, client_address, server):
         # IP/port of requester can be accessed with self.client_address
         self.client_ip = client_address[0]
-        self.spotify_ctx: spotipy.client.Spotify = None
+        self._spotify_ctx: spotipy.client.Spotify = None
         self.config = config
         with open(WEBDIR / "index.html", encoding="utf-8") as f:
             self.webpage_template = f.read()
         super().__init__(request, client_address, server)
+
+
+    @property
+    def spotify_ctx(self) -> spotipy.client.Spotify:
+        """Return the Spotify context used to interact with Spotify"""
+        if self._spotify_ctx is None:
+            cache_handler = spotipy.cache_handler.CacheFileHandler(
+                cache_path=self.config.cache_path
+            )
+            auth_manager = spotipy.oauth2.SpotifyOAuth(
+                scope=SCOPE,
+                cache_handler=cache_handler,
+                client_id=self.config.client_id,
+                client_secret=self.config.client_secret,
+                redirect_uri=self.config.redirect_uri,
+                open_browser=True,
+            )
+            # Spins up a tiny webserver if no cache exists
+            token = auth_manager.get_access_token(as_dict=False)
+            self._spotify_ctx = spotipy.client.Spotify(auth=token)
+        return self._spotify_ctx
 
     def _write_index_page(self, premsg: str = "") -> None:
         """Helper function to write the basic HTML page, with a
@@ -111,28 +132,12 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(data.encode())
             except FileNotFoundError:
-                print(os.listdir())
                 self.send_response(404)
             return
 
         # Handle root differently
-        # TODO the auth stuff needs to be separated out really (and
-        # possibly refreshed via a property), this is ridiculous.
         if path == "/":
             query_string = parse_qs(parts.query)
-            cache_handler = spotipy.cache_handler.CacheFileHandler(
-                cache_path=self.config.cache_path
-            )
-            auth_manager = spotipy.oauth2.SpotifyOAuth(
-                scope=SCOPE,
-                cache_handler=cache_handler,
-                client_id=self.config.client_id,
-                client_secret=self.config.client_secret,
-                redirect_uri=self.config.redirect_uri,
-                open_browser=True,
-            )
-            # Spins up a tiny webserver if no cache exists
-            token = auth_manager.get_access_token(as_dict=False)
 
             # If here, then we have valid auth tokens
             if not query_string:
@@ -146,8 +151,6 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
                 except KeyError:
                     self.send_response(404)
                     return
-
-                self.spotify_ctx = spotipy.client.Spotify(auth=token)
                 if search.startswith(self.config.admin_prefix):
                     output = self.admin_control(search.removeprefix(self.config.admin_prefix))
                 else:
@@ -206,15 +209,23 @@ class CastHTTPRequestHandler(BaseHTTPRequestHandler):
 
         try:
             self._queue_track(track)
-            return_string = (
-                f"Queued:<br>"
-                f"Song: {track['name']}<br>"
-                f"Artist: {track['artists'][0]['name']}<br>"
-                f"Album: {track['album']['name']}<br><br>"
-            )
         except spotipy.exceptions.SpotifyException as exc:
             print(exc)
-            return_string = "Error queuing track - possibly no active device?<br><br>"
+            return "Error queuing track - possibly no active device?<br><br>"
+        try:
+            album_artwork_url = track["album"]["images"][0]["url"]
+        except (KeyError, IndexError):
+            album_artwork_url = ""
+        # XXX: There'll be a more sensible way of doing this
+        return_string = (
+            f"<div class=\"box\">"
+            f"<img src=\"{album_artwork_url}\" width=\"150\" height=\"150\" id=\"album\"/>"
+            f"Queued:<br>"
+            f"Song: {track['name']}<br>"
+            f"Artist: {track['artists'][0]['name']}<br>"
+            f"Album: {track['album']['name']}"
+            f"</div>"
+        )
         return return_string
 
     def admin_control(self, arg: str) -> str:

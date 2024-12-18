@@ -8,12 +8,13 @@
         <title>{title_text}</title>
     </head>
     <body>
+        <h1>{title_text}</h1>
         {premsg}
         <form id="search_box">
-            <label for="search">Search:</label><br>
+            <label for="search">Search for a song to be queued</label><br>
             <input type="text" id="search" name="search"><br>
         </form>
 
-        <button type="submit" form="search_box" value="Submit">Submit</button>
+        <button type="submit" form="search_box" value="Submit">Queue song</button>
     </body>
 </html>

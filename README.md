@@ -68,12 +68,9 @@ Now everything should be in place to run CAST:
 - When trying to run CAST on a device via SSH, I don't get prompted with a window to put my Spotify login details in.
     - CAST will attempt to open a physical web browser using Python's `webbrowser` module. If you're doing this over SSH, you will probably need to ensure you have X11 forwarding enabled.
 - This website looks **awful!** Why haven't you done <X\>/<Y\>/<Z\> with Javascript/CSS/HTML/whatever?
-    - A few reasons:
-        - This is still very much in alpha testing.
-        - I don't know how to do any webdev stuff like JS/CSS/HTML.
-        - Websites today use too much JS/CSS to look fancy, and as a result become very large. I don't want someone's personal computer to have to serve enormous websites to people, so I've aimed for the entire website to be deliverable in a single TCP segment. That said, if you want to suggest some lightweight improvements that would make the website look nicer, please let me know!
+    - I'm not a web developer. Make a pull request!
 
 - I have a honking great idea for how to improve this app - how do I contribute?
-    - Speak to me (Ben).
+    - Make a pull request!
 - Are these questions really "Frequently Asked"?
     - In this case, "FAQs" stands for "Fully Anticipated Questions".
