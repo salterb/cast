@@ -2,8 +2,6 @@
 
 Handles CAST configuration."""
 
-from typing import Self
-
 import yaml
 
 
@@ -23,7 +21,7 @@ class CastConfig:
         self.redirect_uri = f"http://localhost:{self.redirect_port}"
 
     @classmethod
-    def from_config_file(cls, config_file: str) -> Self:
+    def from_config_file(cls, config_file: str) -> "CastConfig":
         """Construct a CastConfig object from a config file."""
         with open(config_file, encoding="utf-8") as f:
             return cls(yaml.safe_load(f))

@@ -9,7 +9,7 @@ authors = [
 ]
 description = "CAST provides a simple interface to communicate with Spotify."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.9"
 version = "0.1"
 dependencies = [
     "spotipy >= 2.24",
